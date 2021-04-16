@@ -2,6 +2,8 @@
 
 A little helper to create a backup of a mongodb using `mongodump`, storing the dump in azure blob or file storage using `azcopy`.
 
+Modified to allow logging in into Azure via service credentials
+
 Tools used:
 
  - [azcopy](https://docs.microsoft.com/de-de/azure/storage/common/storage-use-azcopy-linux)
@@ -17,10 +19,14 @@ Make sure you set the following environment variables, in `.env`
 | variable | description |
 | ------ | ------ |
 | MONGO_URI | mongo host URI |
+| MONGO_CONNECTIONSTRING | mongo host connection string |
 | AZURE_SA | Azure Storage account name |
 | AZURE_BLOB_CONTAINER | name of the azure storage blob container |
 | AZURE_SHARE_NAME | name of the azure file share |
 | AZURE_DESTINATION_KEY | azure storage account destination key |
+| AZCOPY_SPA_CLIENT_SECRET | azure service client secret |
+| AZURE_APP_ID | azure app id |
+| AZURE_TENANT_ID | azure tenant id |
 | DB | name of mongo database to backup |
 | MONGO_USERNAME | username for mongodb |
 | MONGO_PASSWORD | password to authenticate against mongodb |

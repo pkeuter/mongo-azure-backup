@@ -4,6 +4,7 @@ set -e
 
 # define the following in your env
 # MONGO_URI => mongo host URI
+# MONGO_CONNECTIONSTRING => mongo connection string
 # MONGO_USERNAME => username for mongodb
 # MONGO_PASSWORD => password to authenticate against mongodb
 # MONGO_AUTH_DB => name of mongo authentication database
@@ -14,15 +15,9 @@ set -e
 # DB => mongo db to backup
 
 # check the mongo uri
-if [ -z "$MONGO_URI" ]; then
-  echo "Error: you must set the MONGO_URI environment variable"
+if [ -z "$MONGO_URI" ] && [ -z "$MONGO_CONNECTIONSTRING" ]; then
+  echo "Error: you must set the MONGO_URI or MONGO_CONNECTIONSTRING environment variable"
   exit 1
-fi
-
-# check the mongo db
-if [ -z "$DB" ]; then
-  echo "Error: you must set the DB environment variable"
-  exit 2
 fi
 
 # check the azure args
@@ -53,17 +48,28 @@ fi
 
 DIRECTORY=$(date +%Y-%m-%d)
 
-BACKUP_NAME=${DB}-$(date +%Y%m%d_%H%M%S).gz
 
 date
 echo "Backing up MongoDB database ${DB}"
 
 echo "Dumping MongoDB $DB database to compressed archive"
-if [ "$NO_AUTH" = true ]
-then
+if [ ! -z "$MONGO_CONNECTIONSTRING" ]; then
+  DB="mongodb"
+  mongodump ${MONGO_CONNECTIONSTRING} --archive=$HOME/tmp_dump.gz --gzip
+elif [ "$NO_AUTH" = true ]; then
   mongodump --host ${MONGO_URI} --db ${DB} --archive=$HOME/tmp_dump.gz --gzip
 else
   mongodump --authenticationDatabase ${MONGO_AUTH_DB} -u ${MONGO_USERNAME} -p ${MONGO_PASSWORD} --host ${MONGO_URI} --db ${DB} --archive=$HOME/tmp_dump.gz --gzip
+fi
+
+BACKUP_NAME=${DB}-$(date +%Y%m%d_%H%M%S).gz
+
+if [ ! -z "$AZCOPY_SPA_CLIENT_SECRET" ] && [ ! -z "$AZURE_APP_ID" ] && [ ! -z "$AZURE_TENANT_ID" ]; then
+  echo "Logging in to Azure"
+  azcopy login --service-principal --application-id ${AZURE_APP_ID} --tenant-id ${AZURE_TENANT_ID}
+elif [ ! -z "$AZCOPY_SPA_CLIENT_SECRET" ] || [ ! -z "$AZURE_APP_ID" ] || [ ! -z "$AZURE_TENANT_ID" ]; then
+  echo "Error: you must set all the Azure authentication environment variables AZCOPY_SPA_CLIENT_SECRET, AZURE_APP_ID and AZURE_TENANT_ID"
+  exit 6
 fi
 
 echo "Copying compressed archive to Azure Storage: ${AZURE_SA}.${AZURE_TYPE}/${AZURE_CONTAINER_NAME}/${DIRECTORY}/${BACKUP_NAME}"
